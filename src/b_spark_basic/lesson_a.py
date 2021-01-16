@@ -1,12 +1,10 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructField, StringType, IntegerType, StructType
-from pyspark.sql.functions import countDistinct, abs,  stddev, format_number
+from pyspark.sql.functions import countDistinct, abs, stddev, format_number
 
 
-def readingDataFrames():
-
-
-    df = spark.read.json('people.json')
+def readingDataFrames(path, spark):
+    df = spark.read.json(path + 'people.json')
     df.show()
     df.printSchema()
 
@@ -16,11 +14,11 @@ def readingDataFrames():
     df.describe().show()
 
     # Primer parametro de structField es el nombre de la columna, el tipo y si el campo va a tener nulos o no
-    dataSchema = [StructField('age', IntegerType(), True),
-                  StructField('name', StringType(), True)]
+    data_schema = [StructField('age', IntegerType(), True),
+                   StructField('name', StringType(), True)]
 
-    finalStruct = StructType(fields=dataSchema)
-    df = spark.read.json('people.json', schema=finalStruct)
+    final_struct = StructType(fields=data_schema)
+    df = spark.read.json(path+'people.json', schema=final_struct)
     df.printSchema()
 
     # Esto retorna un objeto de tipo columna
@@ -41,10 +39,10 @@ def readingDataFrames():
     print(type(df.head(2)[0]))
 
     # Seleccionar varias columnas arreglo con el nombre de las columnas
-    df.select(['age','name']).show()
+    df.select(['age', 'name']).show()
 
     # adicionar una nueva columna ==> Esto no sobre escribe el objeto df.
-    df.withColumn('double_age', df['age']*2).show()
+    df.withColumn('double_age', df['age'] * 2).show()
 
     # Renombrar una columba ==> Esto no sobre escribe el objeto df.
     df.withColumnRenamed('age', 'new_age_test').show()
@@ -60,8 +58,8 @@ def readingDataFrames():
     result2.show()
 
 
-def basicOperations(spark):
-    df = spark.read.csv('appl_stock.csv', sep=',', header=True, inferSchema=True)
+def basicOperations(path, spark):
+    df = spark.read.csv(path + 'appl_stock.csv', sep=',', header=True, inferSchema=True)
     # spark.sparkContext.setLogLevel("OFF")
     df.printSchema()
     df.show()
@@ -89,29 +87,38 @@ def basicOperations(spark):
 
     df.groupBy('Date').mean().show()
 
-def groupByAndAggregateOperations(spark):
-    df = spark.read.csv('sales_info.csv', header=True, inferSchema=True, sep=',')
+
+def groupByAndAggregateOperations(path, spark):
+    df = spark.read.csv(path + 'sales_info.csv', header=True, inferSchema=True, sep=',')
     df.show()
     print(df.groupBy('Company'))
     # Si no se le especifica el nombre de la columna entrega el agregado de todas las columnas
     df.groupBy('Company').mean().show()
 
     # si solo se quiere agrupar pero sin especificar columnas
-    df.agg({'Sales' :'max'}).show()
+    df.agg({'Sales': 'max'}).show()
 
     df.select(countDistinct('Company')).show()
-    df.select(stddev('Sales').alias('std')).select(format_number('std',2).alias('std final')).show()
+    df.select(stddev('Sales').alias('std')).select(format_number('std', 2).alias('std final')).show()
 
     # Ordenando dataframes
     df.orderBy('Sales').show()
 
+    df.orderBy(df['Sales'].desc())
+
     df.orderBy(['Company', 'Person'], ascending=[0, 1]).show()
 
 
+def workingWithMissData(path, spark):
+    df = spark.read.csv(path + 'ContainsNull.csv', header=True, inferSchema=True, sep=',')
+    df.printSchema()
+    print('End of method')
+
+
 if __name__ == "__main__":
+    resourcesFolder = '../../resources/b_sparks_basic/'
     spark = SparkSession.builder.appName('Basics').getOrCreate()
-    # readingDataFrames(spark)
-    # basicOperations(spark)
-    groupByAndAggregateOperations(spark)
-
-
+    readingDataFrames(resourcesFolder, spark)
+    basicOperations(resourcesFolder, spark)
+    groupByAndAggregateOperations(resourcesFolder, spark)
+    workingWithMissData(resourcesFolder, spark)
