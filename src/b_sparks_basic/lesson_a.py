@@ -1,9 +1,23 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructField, StringType, IntegerType, StructType
-from pyspark.sql.functions import countDistinct, abs, stddev, format_number, mean
+from pyspark.sql.functions import (
+    countDistinct,
+    abs,
+    stddev,
+    format_number,
+    mean,
+    dayofmonth,
+    hour,
+    dayofyear,
+    month,
+    year,
+    weekofyear,
+    format_number,
+    date_format,
+    Column)
 
 
-def readingDataFrames(path, spark):
+def reading_dataframes(path, spark):
     df = spark.read.json(path + 'people.json')
     df.show()
     df.printSchema()
@@ -13,7 +27,8 @@ def readingDataFrames(path, spark):
     # Muestra estadisticas básicas sobre el dataframe las columnas numericas.
     df.describe().show()
 
-    # Primer parametro de structField es el nombre de la columna, el tipo y si el campo va a tener nulos o no
+    # Primer parametro de structField es el nombre de la columna, el tipo y si
+    # el campo va a tener nulos o no
     data_schema = [StructField('age', IntegerType(), True),
                    StructField('name', StringType(), True)]
 
@@ -47,7 +62,8 @@ def readingDataFrames(path, spark):
     # Renombrar una columba ==> Esto no sobre escribe el objeto df.
     df.withColumnRenamed('age', 'new_age_test').show()
 
-    # se puede crear una vista temporal (Tabla) de un dataframe para trabajar SQL sobre el dataframe
+    # se puede crear una vista temporal (Tabla) de un dataframe para trabajar
+    # SQL sobre el dataframe
     df.createOrReplaceTempView('peopleTable')
 
     result = spark.sql('SELECT * FROM peopleTable')
@@ -58,8 +74,12 @@ def readingDataFrames(path, spark):
     result2.show()
 
 
-def basicOperations(path, spark):
-    df = spark.read.csv(path + 'appl_stock.csv', sep=',', header=True, inferSchema=True)
+def basic_operations(path, spark):
+    df = spark.read.csv(
+        path + 'appl_stock.csv',
+        sep=',',
+        header=True,
+        inferSchema=True)
     # spark.sparkContext.setLogLevel("OFF")
     df.printSchema()
     df.show()
@@ -70,10 +90,12 @@ def basicOperations(path, spark):
     # Forma similar a como se haría en SQL
     df.filter(df['Close'] < 500).select(['Open', 'Close']).show()
 
-    # multiples filtros, cada condicion entre parentesis el and es & el or es | y la negación ~
+    # multiples filtros, cada condicion entre parentesis el and es & el or es
+    # | y la negación ~
     df.filter((df['Close'] > 200) & (df['Open'] > 200)).show()
 
-    # Filtrar un dato en particular, para trabajar con el dato y no sacarlo por consola es con collect
+    # Filtrar un dato en particular, para trabajar con el dato y no sacarlo
+    # por consola es con collect
     result = df.filter(df['Close'] == 197.75).collect()
 
     # En este caso entrega un arreglo de filas, que para el caso será una.
@@ -88,18 +110,27 @@ def basicOperations(path, spark):
     df.groupBy('Date').mean().show()
 
 
-def groupByAndAggregateOperations(path, spark):
-    df = spark.read.csv(path + 'sales_info.csv', header=True, inferSchema=True, sep=',')
+def groupby_and_aggregate_operations(path, spark):
+    df = spark.read.csv(
+        path + 'sales_info.csv',
+        header=True,
+        inferSchema=True,
+        sep=',')
     df.show()
     print(df.groupBy('Company'))
-    # Si no se le especifica el nombre de la columna entrega el agregado de todas las columnas
+    # Si no se le especifica el nombre de la columna entrega el agregado de
+    # todas las columnas
     df.groupBy('Company').mean().show()
 
     # si solo se quiere agrupar pero sin especificar columnas
     df.agg({'Sales': 'max'}).show()
 
     df.select(countDistinct('Company')).show()
-    df.select(stddev('Sales').alias('std')).select(format_number('std', 2).alias('std final')).show()
+    df.select(
+        stddev('Sales').alias('std')).select(
+        format_number(
+            'std',
+            2).alias('std final')).show()
 
     # Ordenando dataframes
     df.orderBy('Sales').show()
@@ -109,16 +140,24 @@ def groupByAndAggregateOperations(path, spark):
     df.orderBy(['Company', 'Person'], ascending=[0, 1]).show()
 
 
-def workingWithMissData(path, spark):
-    df = spark.read.csv(path + 'ContainsNull.csv', header=True, inferSchema=True, sep=',')
-    # Para eliminar filas con nulos uno puede utilizar el atributo na y la funcion drop.
+def working_with_missing_data(path, spark):
+    df = spark.read.csv(
+        path +
+        'ContainsNull.csv',
+        header=True,
+        inferSchema=True,
+        sep=',')
+    # Para eliminar filas con nulos uno puede utilizar el atributo na y la
+    # funcion drop.
     df.na.drop().show()
 
-    # Para especificar cuantas columnas deben ser nulas para quitar los nulos, se define un umbral (threshold)
+    # Para especificar cuantas columnas deben ser nulas para quitar los nulos,
+    # se define un umbral (threshold)
     df.na.drop(thresh=2).drop().show()
 
     # Otro parametro dice como debe hacerse el drop, por default el valor esta en any, lo que significa que cualquier
-    # campo que tenga null debe ser descartado, pero puede decirse también el valor de all
+    # campo que tenga null debe ser descartado, pero puede decirse también el
+    # valor de all
     df.na.drop(how='any').show()
     df.na.drop(how='all').show()
 
@@ -135,17 +174,37 @@ def workingWithMissData(path, spark):
 
     # Retorna un arreglo de rows.
     mean_value = df.select(mean('Sales')).collect()
-    # Re uso la variable primer indice corresponde a la primera posición de la lista y el segundo al numero de row.
+    # Re uso la variable primer indice corresponde a la primera posición de la
+    # lista y el segundo al numero de row.
     mean_value = mean_value[0][0]
     df.na.fill(mean_value, subset=['Sales']).show()
 
     print('End of method')
 
 
+def working_with_dates_and_timestamps(path, spark):
+    df = spark.read.csv(
+        path + 'appl_stock.csv',
+        sep=',',
+        header=True,
+        inferSchema=True)
+    df.select(dayofmonth(df['Date']), df['Date']).show()
+    df.select(hour(df['Date']), df['Date']).show()
+    df.select(month(df['Date']), df['Date']).show()
+    df.select(year(df['Date']), df['Date']).show()
+    result = df.groupBy(year(df['Date']).alias(
+        'anio_agg')).agg({'Close': 'mean'})
+    result.select(
+        result['anio_agg'].alias('año'),
+        format_number(result['avg(Close)'], 3).
+        alias('Promedio Cierre')).orderBy('año').show()
+
+
 if __name__ == "__main__":
-    resourcesFolder = '../../resources/b_sparks_basic/'
+    resources_folder = '../../resources/b_sparks_basic/'
     spark = SparkSession.builder.appName('Basics').getOrCreate()
-    # readingDataFrames(resourcesFolder, spark)
-    # basicOperations(resourcesFolder, spark)
-    # groupByAndAggregateOperations(resourcesFolder, spark)
-    workingWithMissData(resourcesFolder, spark)
+    # reading_dataframes(resources_folder, spark)
+    # basic_operations(resources_folder, spark)
+    # groupby_and_aggregate_operations(resources_folder, spark)
+    # working_with_missing_data(resources_folder, spark)
+    working_with_dates_and_timestamps(resources_folder, spark)
