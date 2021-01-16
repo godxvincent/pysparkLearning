@@ -1,6 +1,6 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructField, StringType, IntegerType, StructType
-from pyspark.sql.functions import countDistinct, abs, stddev, format_number
+from pyspark.sql.functions import countDistinct, abs, stddev, format_number, mean
 
 
 def readingDataFrames(path, spark):
@@ -18,7 +18,7 @@ def readingDataFrames(path, spark):
                    StructField('name', StringType(), True)]
 
     final_struct = StructType(fields=data_schema)
-    df = spark.read.json(path+'people.json', schema=final_struct)
+    df = spark.read.json(path + 'people.json', schema=final_struct)
     df.printSchema()
 
     # Esto retorna un objeto de tipo columna
@@ -111,14 +111,41 @@ def groupByAndAggregateOperations(path, spark):
 
 def workingWithMissData(path, spark):
     df = spark.read.csv(path + 'ContainsNull.csv', header=True, inferSchema=True, sep=',')
+    # Para eliminar filas con nulos uno puede utilizar el atributo na y la funcion drop.
+    df.na.drop().show()
+
+    # Para especificar cuantas columnas deben ser nulas para quitar los nulos, se define un umbral (threshold)
+    df.na.drop(thresh=2).drop().show()
+
+    # Otro parametro dice como debe hacerse el drop, por default el valor esta en any, lo que significa que cualquier
+    # campo que tenga null debe ser descartado, pero puede decirse también el valor de all
+    df.na.drop(how='any').show()
+    df.na.drop(how='all').show()
+
+    # Se puede especificar un subconjunto de columnas para que sean evaluadas.
+    df.na.drop(subset=['Sales']).show()
+
+    # Ahora para completar los datos es con el metodo fill y es capaz de determinar a que columnas aplicarles el valor
+    # de acuerdo al tipo de dato que tenga la columna.
     df.printSchema()
+
+    df.na.fill('FILL VALUE').show()
+    df.na.fill(0).show()
+    df.na.fill('0', subset=['Name'])
+
+    # Retorna un arreglo de rows.
+    mean_value = df.select(mean('Sales')).collect()
+    # Re uso la variable primer indice corresponde a la primera posición de la lista y el segundo al numero de row.
+    mean_value = mean_value[0][0]
+    df.na.fill(mean_value, subset=['Sales']).show()
+
     print('End of method')
 
 
 if __name__ == "__main__":
     resourcesFolder = '../../resources/b_sparks_basic/'
     spark = SparkSession.builder.appName('Basics').getOrCreate()
-    readingDataFrames(resourcesFolder, spark)
-    basicOperations(resourcesFolder, spark)
-    groupByAndAggregateOperations(resourcesFolder, spark)
+    # readingDataFrames(resourcesFolder, spark)
+    # basicOperations(resourcesFolder, spark)
+    # groupByAndAggregateOperations(resourcesFolder, spark)
     workingWithMissData(resourcesFolder, spark)
