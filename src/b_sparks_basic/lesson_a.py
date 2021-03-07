@@ -1,6 +1,9 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructField, StringType, IntegerType, StructType
+from pyspark.sql.types import StructField, StringType, IntegerType, StructType, DoubleType
 from pyspark.sql.functions import (
+    corr,
+    min,
+    max,
     countDistinct,
     abs,
     stddev,
@@ -15,6 +18,26 @@ from pyspark.sql.functions import (
     format_number,
     date_format,
     Column)
+
+def test(*args):
+    suma = 0
+    for arg in args:
+        suma = suma + arg
+    print(suma)
+
+
+def filter(**kwargs):
+    query = "SELECT * FROM clientes"
+    i = 0
+    for key, value in kwargs.items():
+        if i == 0:
+            query += " WHERE "
+        else:
+            query += " AND "
+        query += "{}='{}'".format(key, value)
+        i += 1
+    query += ";"
+    return query
 
 
 def reading_dataframes(path, spark):
@@ -200,6 +223,93 @@ def working_with_dates_and_timestamps(path, spark):
         alias('Promedio Cierre')).orderBy('año').show()
 
 
+def basic_practice_exercise(path, spark):
+    # Use the walmart_stock.csv file to Answer and complete the  tasks below!
+    # Start a simple Spark Session
+
+    # Load the Walmart Stock CSV File, have Spark infer the data types.
+    df = spark.read.csv(
+        path + 'walmart_stock.csv',
+        sep=',',
+        header=True,
+        inferSchema=True)
+
+    # What are the column names?
+    print(df.columns)
+
+    # What does the Schema look like?
+    df.printSchema()
+
+    # Print out the first 5 columns.
+    print(df.head(5))
+
+    # Use describe() to learn about the DataFrame.
+    df.describe().show()
+
+    # Bonus Question!
+    # There are too many decimal places for mean and stddev in the describe() dataframe. Format the numbers to just
+    # show up to two decimal places. Pay careful attention to the datatypes that .describe() returns, we didn't cover
+    # how to do this exact formatting, but we covered something very similar. [Check this link for a
+    # hint] (http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.Column.cast)
+    # If you get stuck on this, don 't worry, just view the solutions.
+    new_df = df.describe()
+    new_df.printSchema()
+    new_df.select(
+        new_df['Date'], format_number(
+            new_df['Open'].cast(
+                DoubleType()), 2).alias('Open'), format_number(
+            new_df['High'].cast(
+                DoubleType()), 2).alias('High'), format_number(
+            new_df['Close'].cast(
+                DoubleType()), 2).alias('Close'), format_number(
+            new_df['Volume'].cast(
+                IntegerType()), 2).alias('Volume'), format_number(
+            new_df['Adj Close'].cast(
+                DoubleType()), 2).alias('Adj Close')).show()
+
+    # Create a new dataframe with a column called HV Ratio that is the ratio
+    # of the High Price versus volume of stock traded for a day.
+    df2 = df.withColumn('HV Ratio', df['High'] / df['Volume'])
+    df2.show()
+
+    # What day had the Peak High in Price?
+    max_price = df2.agg({'High': 'max'}).collect()[0][0]
+    df2.filter((df2['High'] == max_price)).select(df2['Date']).show()
+
+    # What is the mean of the Close column?
+    df2.agg({'Close': 'mean'}).show()
+    df2.groupBy().mean('Close').show()
+
+    # What is the max and min of the Volume column?
+    print([df2['Volume'], df2['Close']])
+    # print(isinstance(df2['Volume'], Column))
+    df2.agg(min(df2['Volume']), max(df2['Volume'])).show()
+
+    #### How many days was the Close lower than 60 dollars?
+    df2.filter((df2.Close < 60)).groupBy().count().show()
+
+    #### What percentage of the time was the High greater than 80 dollars ?
+    #### In other words, (Number of Days High>80)/(Total Days in the dataset)
+    # print(df2.filter(df2['High'] > 80).count())
+    print("Percentage", (df2.filter(df2['High'] > 80).count() / df2.count()) * 100 )
+
+    #### What is the Pearson correlation between High and Volume?
+    #### [Hint](http://spark.apache.org/docs/latest/api/python/pyspark.sql.html#pyspark.sql.DataFrameStatFunctions.corr)
+    df2.select(corr(df2['High'], df2['Volume'])).show()
+
+
+    #### What is the max High per year?
+    df2.groupBy(year(df2['Date']).alias('Year')).max('High').orderBy('Year').show()
+
+    #### What is the average Close for each Calendar Month?
+    #### In other words, across all the years, what is the average Close price for Jan,Feb, Mar, etc...
+    #### Your result will have a value for each of these months.
+    df2.groupBy(month(df2['Date']).alias('Months')).mean('Close').orderBy('Months').show()
+
+
+
+
+
 if __name__ == "__main__":
     resources_folder = '../../resources/b_sparks_basic/'
     spark = SparkSession.builder.appName('Basics').getOrCreate()
@@ -207,4 +317,5 @@ if __name__ == "__main__":
     # basic_operations(resources_folder, spark)
     # groupby_and_aggregate_operations(resources_folder, spark)
     # working_with_missing_data(resources_folder, spark)
-    working_with_dates_and_timestamps(resources_folder, spark)
+    # working_with_dates_and_timestamps(resources_folder, spark)
+    basic_practice_exercise(resources_folder, spark)
