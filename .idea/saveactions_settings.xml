@@ -5,7 +5,13 @@
       <set>
         <option value="activate" />
         <option value="reformat" />
+        <option value="executeAction" />
       </set>
+    </option>
+    <option name="quickLists">
+      <list>
+        <option value="546610044" />
+      </list>
     </option>
   </component>
 </project>

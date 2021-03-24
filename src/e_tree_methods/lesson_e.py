@@ -47,19 +47,40 @@ def universities_example(spark, resources_folder):
     data.show()
 
     assembler = VectorAssembler(
-        inputCols=['Apps', 'Accept', 'Enroll', 'Top10perc', 'Top25perc', 'F_Undergrad', 'P_Undergrad', 'Outstate'
-                                                                                                       'Room_Board',
-                   'Books', 'Personal', 'PhD', 'Terminal', 'S_F_Ratio', 'perc_alumni',
-                   'Expend', 'Grad_Rate'],
+        inputCols=[
+            'Apps',
+            'Accept',
+            'Enroll',
+            'Top10perc',
+            'Top25perc',
+            'F_Undergrad',
+            'P_Undergrad',
+            'Outstate'
+            'Room_Board',
+            'Books',
+            'Personal',
+            'PhD',
+            'Terminal',
+            'S_F_Ratio',
+            'perc_alumni',
+            'Expend',
+            'Grad_Rate'],
         outputCol='features')
     data_assembled = assembler.transform(data)
-    private_state_indexer = StringIndexer(inputCol='Private', outputCol='PrivateIndex')
-    data_transformed = private_state_indexer.fit(data_assembled).transform(data_assembled)
+    private_state_indexer = StringIndexer(
+        inputCol='Private', outputCol='PrivateIndex')
+    data_transformed = private_state_indexer.fit(
+        data_assembled).transform(data_assembled)
 
-    train_data, test_data = data_transformed.select(['features', 'PrivateIndex']).randomSplit([0.6, 0.4])
+    train_data, test_data = data_transformed.select(
+        ['features', 'PrivateIndex']).randomSplit([0.6, 0.4])
 
-    dtc = DecisionTreeClassifier(labelCol='PrivateIndex', featuresCol='features')
-    rfc = RandomForestClassifier(labelCol='PrivateIndex', featuresCol='features')
+    dtc = DecisionTreeClassifier(
+        labelCol='PrivateIndex',
+        featuresCol='features')
+    rfc = RandomForestClassifier(
+        labelCol='PrivateIndex',
+        featuresCol='features')
     gbtc = GBTClassifier(labelCol='PrivateIndex', featuresCol='features')
 
     dtc_college_model = dtc.fit(train_data)
@@ -70,18 +91,21 @@ def universities_example(spark, resources_folder):
     rfc_predictions = rfc_college_model.transform(test_data)
     gbtc_predictions = gbtc_college_model.transform(test_data)
 
-    my_binary_evaluator = BinaryClassificationEvaluator(labelCol='PrivateIndex')
+    my_binary_evaluator = BinaryClassificationEvaluator(
+        labelCol='PrivateIndex')
     print("DTC Evaluator")
     print(my_binary_evaluator.evaluate(dtc_predictions))
     print("RFC Evaluator")
     print(my_binary_evaluator.evaluate(rfc_predictions))
     print("DTC Evaluator")
-    my_binary_evaluator = BinaryClassificationEvaluator(labelCol='PrivateIndex', rawPredictionCol='prediction')
+    my_binary_evaluator = BinaryClassificationEvaluator(
+        labelCol='PrivateIndex', rawPredictionCol='prediction')
     print(my_binary_evaluator.evaluate(gbtc_predictions))
 
     # No se puede hacer una evaluación del accuracy con un BinaryClassificationEvaluator para eso toca usar un
     # MulticlassClassificationEvaluator
-    acc_eval = MulticlassClassificationEvaluator(labelCol='PrivateIndex', metricName='accuracy')
+    acc_eval = MulticlassClassificationEvaluator(
+        labelCol='PrivateIndex', metricName='accuracy')
     rfc_accuracy = acc_eval.evaluate(rfc_predictions)
     print(rfc_accuracy)
 
@@ -93,7 +117,13 @@ def consulting_project(spark, resources_folder):
     data.show()
     data.describe().show()
     # data.filter((data['Spoiled']==0)).show()
-    assembler = VectorAssembler(inputCols=['A', 'B', 'C', 'D'], outputCol='features')
+    assembler = VectorAssembler(
+        inputCols=[
+            'A',
+            'B',
+            'C',
+            'D'],
+        outputCol='features')
     data_prepared = assembler.transform(data)
     rfc = RandomForestClassifier(labelCol='Spoiled', featuresCol='features')
     rfc_model = rfc.fit(data_prepared)
@@ -111,7 +141,7 @@ def consulting_project(spark, resources_folder):
     print("featureImportances")
     print(rfc_model.featureImportances)
     print(type(rfc_model.featureImportances))
- 
+
 
 if __name__ == "__main__":
     resources_folder = '../../resources/e_tree_methods/'
